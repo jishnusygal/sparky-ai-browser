@@ -1,16 +1,19 @@
 {
   "manifest_version": 3,
   "name": "Sparky - Agentic AI Browser",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "🐕 An intelligent browser agent that autonomously navigates the web to accomplish your goals",
   "permissions": [
     "activeTab",
     "scripting",
     "storage",
-    "sidePanel"
+    "sidePanel",
+    "identity"
   ],
   "host_permissions": [
-    "<all_urls>"
+    "<all_urls>",
+    "https://www.googleapis.com/*",
+    "https://accounts.google.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -21,6 +24,13 @@
   "content_scripts": [],
   "action": {
     "default_title": "Open Sparky AI Browser"
+  },
+  "oauth2": {
+    "client_id": "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/userinfo.profile",
+      "https://www.googleapis.com/auth/userinfo.email"
+    ]
   },
   "icons": {
     "16": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTggMkM2IDIgNCAzIDQgNXYyYzAgMiAyIDMgNCAzcy00LTEgNC0zVjVDMTIgMyAxMCAyIDggMloiIGZpbGw9IiM4QjQ1MTMiLz4KPGNpcmNsZSBjeD0iNiIgY3k9IjYiIHI9IjEiIGZpbGw9IiMwMDAiLz4KPGNpcmNsZSBjeD0iMTAiIGN5PSI2IiByPSIxIiBmaWxsPSIjMDAwIi8+CjxwYXRoIGQ9Ik04IDlDNyA5IDYgMTAgNiAxMXMxIDIgMiAyIDItMSAyLTJTOSA5IDggOVoiIGZpbGw9IiM4QjQ1MTMiLz4KPC9zdmc+",

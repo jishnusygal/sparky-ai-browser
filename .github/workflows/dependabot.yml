@@ -1,0 +1,306 @@
+name: 🔄 Dependabot Updates
+
+on:
+  schedule:
+    # Run every Monday at 9 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  dependabot-automerge:
+    name: 🤖 Auto-merge Dependabot PRs
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: 🔍 Get PR Details
+        id: pr-details
+        run: |
+          pr_number=$(jq -r '.pull_request.number' "$GITHUB_EVENT_PATH")
+          echo "pr_number=$pr_number" >> $GITHUB_OUTPUT
+      
+      - name: ✅ Auto-approve Dependabot PR
+        if: steps.pr-details.outputs.pr_number
+        run: |
+          gh pr review ${{ steps.pr-details.outputs.pr_number }} --approve --body "🤖 Auto-approved by Dependabot workflow"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: 🔀 Auto-merge Minor/Patch Updates
+        if: steps.pr-details.outputs.pr_number
+        run: |
+          # Get PR title to determine update type
+          pr_title=$(gh pr view ${{ steps.pr-details.outputs.pr_number }} --json title -q '.title')
+          
+          # Auto-merge patch and minor updates only
+          if [[ "$pr_title" =~ "Bump.*from.*to.*" ]]; then
+            if [[ "$pr_title" =~ \.[0-9]+\.[0-9]+$ ]] || [[ "$pr_title" =~ \.[0-9]+$ ]]; then
+              echo "🚀 Auto-merging minor/patch update: $pr_title"
+              gh pr merge ${{ steps.pr-details.outputs.pr_number }} --squash --auto
+            else
+              echo "⚠️ Major update detected, manual review required: $pr_title"
+            fi
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  create-dependency-update-issue:
+    name: 📊 Dependency Health Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: 📊 Check for Outdated Dependencies
+        id: outdated
+        run: |
+          # Check if package.json exists
+          if [[ -f "package.json" ]]; then
+            echo "📦 package.json found, checking for outdated dependencies..."
+            
+            # Create package.json if it doesn't exist or is minimal
+            if ! grep -q "\"dependencies\"" package.json 2>/dev/null; then
+              echo "Creating development package.json for dependency tracking..."
+              cat > package.json << 'EOF'
+          {
+            "name": "sparky-ai-browser",
+            "version": "1.1.0",
+            "description": "Agentic AI Browser Extension",
+            "devDependencies": {
+              "eslint": "^8.0.0",
+              "prettier": "^3.0.0",
+              "web-ext": "^7.0.0",
+              "jest": "^29.0.0"
+            },
+            "scripts": {
+              "lint": "eslint *.js",
+              "format": "prettier --write *.js *.html *.css",
+              "test": "jest",
+              "build": "web-ext build"
+            }
+          }
+          EOF
+            fi
+            
+            npm install --package-lock-only 2>/dev/null || echo "No dependencies to install"
+            
+            # Check for security vulnerabilities
+            audit_output=$(npm audit --json 2>/dev/null || echo '{"vulnerabilities":{}}')
+            high_vulns=$(echo "$audit_output" | jq '.metadata.vulnerabilities.high // 0')
+            critical_vulns=$(echo "$audit_output" | jq '.metadata.vulnerabilities.critical // 0')
+            
+            echo "high_vulns=$high_vulns" >> $GITHUB_OUTPUT
+            echo "critical_vulns=$critical_vulns" >> $GITHUB_OUTPUT
+            
+            # Check for outdated packages
+            outdated_output=$(npm outdated --json 2>/dev/null || echo '{}')
+            outdated_count=$(echo "$outdated_output" | jq '. | length')
+            
+            echo "outdated_count=$outdated_count" >> $GITHUB_OUTPUT
+            echo "has_vulnerabilities=$([[ $high_vulns -gt 0 || $critical_vulns -gt 0 ]] && echo true || echo false)" >> $GITHUB_OUTPUT
+          else
+            echo "No package.json found, checking browser extension dependencies..."
+            echo "outdated_count=0" >> $GITHUB_OUTPUT
+            echo "has_vulnerabilities=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: 🚨 Create Security Alert Issue
+        if: steps.outdated.outputs.has_vulnerabilities == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const highVulns = ${{ steps.outdated.outputs.high_vulns }};
+            const criticalVulns = ${{ steps.outdated.outputs.critical_vulns }};
+            
+            const title = `🚨 Security Alert: ${criticalVulns + highVulns} High/Critical Vulnerabilities Detected`;
+            
+            const body = `## 🛡️ Security Vulnerability Alert
+            
+            Our automated security scan detected vulnerabilities in project dependencies:
+            
+            ### 📊 Vulnerability Summary
+            - 🔴 **Critical**: ${criticalVulns}
+            - 🟠 **High**: ${highVulns}
+            
+            ### 🔧 Action Required
+            1. Run \`npm audit\` to see detailed vulnerability report
+            2. Run \`npm audit fix\` to attempt automatic fixes
+            3. For vulnerabilities that can't be auto-fixed, consider:
+               - Updating to newer versions manually
+               - Finding alternative packages
+               - Implementing workarounds if updates aren't available
+            
+            ### 🤖 Automation
+            This issue was automatically created by our security monitoring workflow.
+            
+            **Priority**: High - Please address these vulnerabilities promptly.
+            `;
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['security', 'dependencies', 'priority-high']
+            });
+      
+      - name: 📈 Create Dependency Update Summary
+        if: steps.outdated.outputs.outdated_count > 0 && steps.outdated.outputs.has_vulnerabilities == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const outdatedCount = ${{ steps.outdated.outputs.outdated_count }};
+            
+            const title = `📦 Weekly Dependency Update Summary`;
+            
+            const body = `## 📊 Dependency Health Report
+            
+            ### 📈 Update Summary
+            - **Outdated packages**: ${outdatedCount}
+            - **Security vulnerabilities**: None detected ✅
+            
+            ### 🔧 Recommended Actions
+            1. Review outdated dependencies with \`npm outdated\`
+            2. Consider updating non-breaking changes
+            3. Test thoroughly before merging major version updates
+            
+            ### 🤖 Automation Status
+            - Dependabot is monitoring for updates
+            - Minor/patch updates will be auto-merged after CI passes
+            - Major updates require manual review
+            
+            **This is an informational issue and can be closed after review.**
+            `;
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['dependencies', 'maintenance']
+            });
+
+  browser-compatibility-check:
+    name: 🌐 Browser Compatibility Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: 🔍 Check Browser API Compatibility
+        run: |
+          echo "🌐 Checking browser API compatibility..."
+          
+          # Check for deprecated APIs
+          deprecated_apis=()
+          
+          if grep -r "chrome.extension" --include="*.js" .; then
+            deprecated_apis+=("chrome.extension (deprecated)")
+          fi
+          
+          if grep -r "chrome.runtime.onSuspend" --include="*.js" .; then
+            deprecated_apis+=("chrome.runtime.onSuspend (not available in service workers)")
+          fi
+          
+          if grep -r "chrome.browserAction" --include="*.js" .; then
+            deprecated_apis+=("chrome.browserAction (use chrome.action in Manifest V3)")
+          fi
+          
+          if grep -r "chrome.pageAction" --include="*.js" .; then
+            deprecated_apis+=("chrome.pageAction (use chrome.action in Manifest V3)")
+          fi
+          
+          if grep -r "background.*persistent.*true" --include="*.json" .; then
+            deprecated_apis+=("persistent background pages (use service workers)")
+          fi
+          
+          # Create compatibility report
+          if [[ ${#deprecated_apis[@]} -gt 0 ]]; then
+            echo "⚠️ Found compatibility issues:"
+            printf '%s\n' "${deprecated_apis[@]}"
+            
+            # Create an issue for compatibility problems
+            cat > compatibility_report.md << 'EOF'
+          ## 🌐 Browser Compatibility Issues Detected
+          
+          Our automated compatibility check found potential issues:
+          
+          ### ⚠️ Deprecated APIs Found:
+          EOF
+            
+            for api in "${deprecated_apis[@]}"; do
+              echo "- $api" >> compatibility_report.md
+            done
+            
+            cat >> compatibility_report.md << 'EOF'
+          
+          ### 🔧 Recommended Actions:
+          1. Review the code for deprecated API usage
+          2. Update to modern equivalents where possible
+          3. Test in latest Chrome/Edge versions
+          4. Ensure Manifest V3 compliance
+          
+          ### 📚 Resources:
+          - [Chrome Extension API Reference](https://developer.chrome.com/docs/extensions/reference/)
+          - [Manifest V3 Migration Guide](https://developer.chrome.com/docs/extensions/migrating/)
+          
+          This issue was automatically created by our compatibility monitoring.
+          EOF
+            
+            echo "compatibility_issues=true" >> $GITHUB_ENV
+          else
+            echo "✅ No compatibility issues detected"
+            echo "compatibility_issues=false" >> $GITHUB_ENV
+          fi
+      
+      - name: 📝 Create Compatibility Issue
+        if: env.compatibility_issues == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('compatibility_report.md', 'utf8');
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🌐 Browser Compatibility Issues Detected',
+              body: body,
+              labels: ['compatibility', 'browser-api', 'maintenance']
+            });
+
+  workflow-summary:
+    name: 📋 Dependabot Summary
+    runs-on: ubuntu-latest
+    needs: [create-dependency-update-issue, browser-compatibility-check]
+    if: always() && github.event_name == 'schedule'
+    
+    steps:
+      - name: 📊 Generate Summary
+        run: |
+          echo "## 🤖 Automated Maintenance Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔄 Weekly Dependency Check" >> $GITHUB_STEP_SUMMARY
+          echo "- Dependency health check: ${{ needs.create-dependency-update-issue.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Browser compatibility check: ${{ needs.browser-compatibility-check.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🎯 Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Review any created issues for security or compatibility problems" >> $GITHUB_STEP_SUMMARY
+          echo "2. Monitor Dependabot PRs for automatic dependency updates" >> $GITHUB_STEP_SUMMARY
+          echo "3. Test new dependency versions before release" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Sparky's dependencies are being actively monitored! 🐕**" >> $GITHUB_STEP_SUMMARY

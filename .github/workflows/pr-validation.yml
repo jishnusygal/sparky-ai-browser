@@ -1,0 +1,433 @@
+name: 🔍 PR Validation
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  pr-validation:
+    name: 🔍 Validate PR
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: 📝 Validate PR Title
+        run: |
+          pr_title="${{ github.event.pull_request.title }}"
+          echo "🔍 Validating PR title: $pr_title"
+          
+          # Check if PR title follows conventional commit format
+          if [[ "$pr_title" =~ ^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?!?:\ .+ ]]; then
+            echo "✅ PR title follows conventional commit format"
+            echo "PR_TITLE_VALID=true" >> $GITHUB_ENV
+          else
+            echo "❌ PR title does not follow conventional commit format"
+            echo "PR_TITLE_VALID=false" >> $GITHUB_ENV
+            
+            echo "Expected format: type(scope): description"
+            echo "Examples:"
+            echo "  feat(auth): add Google OAuth integration"
+            echo "  fix(sidebar): resolve panel rendering issue"
+            echo "  docs(readme): update installation instructions"
+          fi
+      
+      - name: 📋 Validate PR Description
+        run: |
+          pr_body="${{ github.event.pull_request.body }}"
+          
+          if [[ -z "$pr_body" ]]; then
+            echo "❌ PR description is empty"
+            echo "PR_DESCRIPTION_VALID=false" >> $GITHUB_ENV
+          elif [[ ${#pr_body} -lt 50 ]]; then
+            echo "⚠️ PR description is very short (${#pr_body} characters)"
+            echo "PR_DESCRIPTION_VALID=warning" >> $GITHUB_ENV
+          else
+            echo "✅ PR description looks good (${#pr_body} characters)"
+            echo "PR_DESCRIPTION_VALID=true" >> $GITHUB_ENV
+          fi
+      
+      - name: 🔗 Check Linked Issues
+        run: |
+          pr_body="${{ github.event.pull_request.body }}"
+          
+          # Check for issue references
+          if echo "$pr_body" | grep -qiE "(closes?|fixes?|resolves?) #[0-9]+"; then
+            echo "✅ PR links to issues"
+            echo "ISSUES_LINKED=true" >> $GITHUB_ENV
+          else
+            echo "⚠️ PR doesn't link to any issues"
+            echo "ISSUES_LINKED=false" >> $GITHUB_ENV
+            echo "Consider linking related issues with 'Closes #123' or 'Fixes #456'"
+          fi
+      
+      - name: 📊 Analyze Commit Messages
+        run: |
+          echo "🔍 Analyzing commit messages in this PR..."
+          
+          # Get commit messages from this PR
+          base_sha="${{ github.event.pull_request.base.sha }}"
+          head_sha="${{ github.event.pull_request.head.sha }}"
+          
+          commits=$(git log --pretty=format:"%s" ${base_sha}..${head_sha})
+          
+          if [[ -z "$commits" ]]; then
+            echo "No commits found in this PR"
+            exit 0
+          fi
+          
+          conventional_count=0
+          total_count=0
+          non_conventional=()
+          
+          while IFS= read -r commit; do
+            if [[ -n "$commit" ]]; then
+              total_count=$((total_count + 1))
+              if [[ "$commit" =~ ^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?!?:\ .+ ]]; then
+                conventional_count=$((conventional_count + 1))
+              else
+                non_conventional+=("$commit")
+              fi
+            fi
+          done <<< "$commits"
+          
+          echo "📊 Commit Analysis:"
+          echo "  Total commits: $total_count"
+          echo "  Conventional: $conventional_count"
+          echo "  Non-conventional: $((total_count - conventional_count))"
+          
+          if [[ ${#non_conventional[@]} -gt 0 ]]; then
+            echo ""
+            echo "⚠️ Non-conventional commits found:"
+            printf '  - %s\n' "${non_conventional[@]}"
+            echo ""
+            echo "Consider using conventional commit format for better automation."
+          fi
+          
+          if [[ $conventional_count -eq $total_count ]]; then
+            echo "COMMITS_CONVENTIONAL=true" >> $GITHUB_ENV
+          else
+            echo "COMMITS_CONVENTIONAL=false" >> $GITHUB_ENV
+          fi
+      
+      - name: 🏷️ Suggest PR Labels
+        run: |
+          pr_title="${{ github.event.pull_request.title }}"
+          pr_body="${{ github.event.pull_request.body }}"
+          
+          suggested_labels=()
+          
+          # Suggest labels based on PR title
+          if [[ "$pr_title" =~ ^feat ]]; then
+            suggested_labels+=("enhancement")
+          elif [[ "$pr_title" =~ ^fix ]]; then
+            suggested_labels+=("bug")
+          elif [[ "$pr_title" =~ ^docs ]]; then
+            suggested_labels+=("documentation")
+          elif [[ "$pr_title" =~ ^test ]]; then
+            suggested_labels+=("testing")
+          elif [[ "$pr_title" =~ ^ci ]]; then
+            suggested_labels+=("ci/cd")
+          elif [[ "$pr_title" =~ ^chore ]]; then
+            suggested_labels+=("maintenance")
+          elif [[ "$pr_title" =~ ^perf ]]; then
+            suggested_labels+=("performance")
+          elif [[ "$pr_title" =~ ^refactor ]]; then
+            suggested_labels+=("refactoring")
+          fi
+          
+          # Suggest labels based on content
+          if echo "$pr_body" | grep -qi "breaking change"; then
+            suggested_labels+=("breaking-change")
+          fi
+          
+          if echo "$pr_body" | grep -qi "security"; then
+            suggested_labels+=("security")
+          fi
+          
+          if echo "$pr_body" | grep -qi "dependency\|dependencies"; then
+            suggested_labels+=("dependencies")
+          fi
+          
+          if [[ ${#suggested_labels[@]} -gt 0 ]]; then
+            echo "🏷️ Suggested labels for this PR:"
+            printf '  - %s\n' "${suggested_labels[@]}"
+            
+            # Save labels for later use
+            printf '%s\n' "${suggested_labels[@]}" > suggested_labels.txt
+          else
+            echo "No specific labels suggested"
+          fi
+      
+      - name: 📋 Generate PR Validation Summary
+        run: |
+          echo "## 🔍 PR Validation Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Title validation
+          if [[ "$PR_TITLE_VALID" == "true" ]]; then
+            echo "✅ **PR Title**: Follows conventional commit format" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **PR Title**: Does not follow conventional commit format" >> $GITHUB_STEP_SUMMARY
+            echo "   - Expected: \`type(scope): description\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Description validation
+          if [[ "$PR_DESCRIPTION_VALID" == "true" ]]; then
+            echo "✅ **PR Description**: Comprehensive description provided" >> $GITHUB_STEP_SUMMARY
+          elif [[ "$PR_DESCRIPTION_VALID" == "warning" ]]; then
+            echo "⚠️ **PR Description**: Description is quite short" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **PR Description**: Missing or empty" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Issue linking
+          if [[ "$ISSUES_LINKED" == "true" ]]; then
+            echo "✅ **Issue Linking**: PR references related issues" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ **Issue Linking**: Consider linking to related issues" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Commit messages
+          if [[ "$COMMITS_CONVENTIONAL" == "true" ]]; then
+            echo "✅ **Commit Messages**: All commits follow conventional format" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ **Commit Messages**: Some commits don't follow conventional format" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Overall status
+          if [[ "$PR_TITLE_VALID" == "true" && "$PR_DESCRIPTION_VALID" != "false" ]]; then
+            echo "🎉 **Overall**: This PR looks good and ready for review!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "🔧 **Overall**: Consider addressing the issues above before review" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📚 Resources" >> $GITHUB_STEP_SUMMARY
+          echo "- [Conventional Commits](https://www.conventionalcommits.org/)" >> $GITHUB_STEP_SUMMARY
+          echo "- [Contributing Guide](https://github.com/jishnusygal/sparky-ai-browser/blob/main/CONTRIBUTING.md)" >> $GITHUB_STEP_SUMMARY
+      
+      - name: 💬 Add PR Comment
+        if: env.PR_TITLE_VALID == 'false' || env.PR_DESCRIPTION_VALID == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const titleValid = process.env.PR_TITLE_VALID === 'true';
+            const descriptionValid = process.env.PR_DESCRIPTION_VALID !== 'false';
+            
+            if (!titleValid || !descriptionValid) {
+              let comment = '## 🤖 PR Validation Feedback\n\n';
+              
+              if (!titleValid) {
+                comment += '❌ **PR Title Issue**: Your PR title doesn\'t follow conventional commit format.\n\n';
+                comment += '**Expected format**: `type(scope): description`\n\n';
+                comment += '**Examples**:\n';
+                comment += '- `feat(auth): add Google OAuth integration`\n';
+                comment += '- `fix(sidebar): resolve panel rendering issue`\n';
+                comment += '- `docs(readme): update installation instructions`\n\n';
+              }
+              
+              if (!descriptionValid) {
+                comment += '❌ **PR Description Issue**: Please provide a more detailed description of your changes.\n\n';
+                comment += 'A good PR description helps reviewers understand:\n';
+                comment += '- What changes you made\n';
+                comment += '- Why you made them\n';
+                comment += '- How to test them\n\n';
+              }
+              
+              comment += '📚 **Resources**:\n';
+              comment += '- [Conventional Commits Guide](https://www.conventionalcommits.org/)\n';
+              comment += '- [Contributing Guidelines](https://github.com/jishnusygal/sparky-ai-browser/blob/main/CONTRIBUTING.md)\n\n';
+              comment += '_This comment was automatically generated by the PR validation workflow._';
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            }
+
+  pr-size-check:
+    name: 📏 Check PR Size
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: 📊 Analyze PR Size
+        run: |
+          base_sha="${{ github.event.pull_request.base.sha }}"
+          head_sha="${{ github.event.pull_request.head.sha }}"
+          
+          # Get file changes
+          changed_files=$(git diff --name-only ${base_sha}..${head_sha} | wc -l)
+          
+          # Get line changes
+          line_changes=$(git diff --shortstat ${base_sha}..${head_sha})
+          insertions=$(echo "$line_changes" | grep -oE '[0-9]+ insertions?' | grep -oE '[0-9]+' || echo "0")
+          deletions=$(echo "$line_changes" | grep -oE '[0-9]+ deletions?' | grep -oE '[0-9]+' || echo "0")
+          
+          total_changes=$((insertions + deletions))
+          
+          echo "📊 PR Size Analysis:"
+          echo "  Files changed: $changed_files"
+          echo "  Lines inserted: $insertions"
+          echo "  Lines deleted: $deletions"
+          echo "  Total changes: $total_changes"
+          
+          # Determine PR size
+          if [[ $total_changes -lt 50 ]]; then
+            size="XS"
+            emoji="🟢"
+          elif [[ $total_changes -lt 200 ]]; then
+            size="S"
+            emoji="🟢"
+          elif [[ $total_changes -lt 500 ]]; then
+            size="M"
+            emoji="🟡"
+          elif [[ $total_changes -lt 1000 ]]; then
+            size="L"
+            emoji="🟠"
+          else
+            size="XL"
+            emoji="🔴"
+          fi
+          
+          echo "PR_SIZE=$size" >> $GITHUB_ENV
+          echo "PR_SIZE_EMOJI=$emoji" >> $GITHUB_ENV
+          echo "CHANGED_FILES=$changed_files" >> $GITHUB_ENV
+          echo "TOTAL_CHANGES=$total_changes" >> $GITHUB_ENV
+          
+          echo ""
+          echo "$emoji PR Size: $size ($total_changes changes across $changed_files files)"
+          
+          if [[ "$size" == "XL" ]]; then
+            echo "⚠️ This is a very large PR. Consider breaking it into smaller PRs for easier review."
+          elif [[ "$size" == "L" ]]; then
+            echo "📝 This is a large PR. Make sure the description clearly explains all changes."
+          fi
+      
+      - name: 💬 Add Size Comment
+        if: env.PR_SIZE == 'XL'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const size = process.env.PR_SIZE;
+            const totalChanges = process.env.TOTAL_CHANGES;
+            const changedFiles = process.env.CHANGED_FILES;
+            
+            const comment = `## 📏 Large PR Detected
+            
+            ${process.env.PR_SIZE_EMOJI} **PR Size**: ${size} (${totalChanges} changes across ${changedFiles} files)
+            
+            This is a very large PR! Large PRs can be difficult to review effectively. Consider:
+            
+            ### 🔧 Suggestions:
+            - **Break it down**: Split into smaller, focused PRs
+            - **Clear description**: Provide detailed explanation of all changes
+            - **Self-review**: Review your own changes first to catch obvious issues
+            - **Documentation**: Update relevant documentation
+            - **Testing**: Ensure comprehensive testing of all changes
+            
+            ### 📚 Why smaller PRs are better:
+            - Faster review cycles
+            - Easier to understand changes
+            - Lower risk of introducing bugs
+            - Better git history
+            - Easier to revert if needed
+            
+            _This comment was automatically generated based on PR size analysis._`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  security-check:
+    name: 🛡️ Security Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: 📥 Checkout PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      
+      - name: 🔍 Security Scan
+        run: |
+          echo "🛡️ Running security analysis on PR changes..."
+          
+          # Check for potential security issues in changed files
+          security_issues=()
+          
+          # Check for hardcoded secrets
+          if git diff --name-only HEAD~1 | xargs grep -l "password\|secret\|key\|token" 2>/dev/null; then
+            security_issues+=("Potential hardcoded secrets detected")
+          fi
+          
+          # Check for eval usage
+          if git diff --name-only HEAD~1 | xargs grep -l "eval(" 2>/dev/null; then
+            security_issues+=("eval() usage detected - security risk")
+          fi
+          
+          # Check for innerHTML usage
+          if git diff --name-only HEAD~1 | xargs grep -l "innerHTML" 2>/dev/null; then
+            security_issues+=("innerHTML usage detected - ensure content is sanitized")
+          fi
+          
+          # Check for external script loading
+          if git diff --name-only HEAD~1 | xargs grep -l "document.createElement.*script" 2>/dev/null; then
+            security_issues+=("Dynamic script creation detected - review for security")
+          fi
+          
+          if [[ ${#security_issues[@]} -gt 0 ]]; then
+            echo "⚠️ Security concerns found:"
+            printf '  - %s\n' "${security_issues[@]}"
+            echo "SECURITY_ISSUES=true" >> $GITHUB_ENV
+          else
+            echo "✅ No obvious security issues detected"
+            echo "SECURITY_ISSUES=false" >> $GITHUB_ENV
+          fi
+
+  validation-summary:
+    name: 📋 Validation Summary
+    runs-on: ubuntu-latest
+    needs: [pr-validation, pr-size-check, security-check]
+    if: always() && github.event_name == 'pull_request'
+    
+    steps:
+      - name: 📊 Generate Final Summary
+        run: |
+          echo "## 🎯 PR Validation Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| PR Validation | ${{ needs.pr-validation.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Size Check | ${{ needs.pr-size-check.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security Review | ${{ needs.security-check.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ needs.pr-validation.result }}" == "success" && "${{ needs.pr-size-check.result }}" == "success" && "${{ needs.security-check.result }}" == "success" ]]; then
+            echo "🎉 **All validations passed!** This PR is ready for review." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "🔧 **Some validations need attention.** Please review the feedback above." >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🐕 **Sparky's PR validation is complete!**" >> $GITHUB_STEP_SUMMARY

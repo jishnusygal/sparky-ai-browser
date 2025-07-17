@@ -1,0 +1,93 @@
+{
+  "name": "sparky-ai-browser",
+  "version": "1.1.0",
+  "description": "🐕 An intelligent browser agent that autonomously navigates the web",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:e2e": "playwright test",
+    "test:unit": "jest --testPathPattern=tests/unit",
+    "test:integration": "jest --testPathPattern=tests/integration",
+    "test:extension": "playwright test tests/extension",
+    "lint": "eslint *.js",
+    "lint:fix": "eslint *.js --fix",
+    "format": "prettier --write \"**/*.{js,html,css,json,md}\"",
+    "format:check": "prettier --check \"**/*.{js,html,css,json,md}\"",
+    "build": "npm run test && npm run lint && npm run format:check",
+    "build:extension": "web-ext build --source-dir=. --artifacts-dir=dist",
+    "dev": "web-ext run --source-dir=.",
+    "validate": "web-ext lint --source-dir=."
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "@testing-library/jest-dom": "^6.1.0",
+    "eslint": "^8.50.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-jest": "^27.4.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "jest-chrome": "^0.8.0",
+    "prettier": "^3.0.0",
+    "web-ext": "^7.8.0"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "setupFilesAfterEnv": ["<rootDir>/tests/setup.js"],
+    "testMatch": [
+      "<rootDir>/tests/**/*.test.js",
+      "<rootDir>/tests/**/*.spec.js"
+    ],
+    "collectCoverageFrom": [
+      "*.js",
+      "!node_modules/**",
+      "!tests/**",
+      "!dist/**",
+      "!coverage/**"
+    ],
+    "coverageReporters": ["text", "lcov", "html"],
+    "coverageDirectory": "coverage",
+    "coverageThreshold": {
+      "global": {
+        "branches": 70,
+        "functions": 70,
+        "lines": 70,
+        "statements": 70
+      }
+    }
+  },
+  "eslintConfig": {
+    "env": {
+      "browser": true,
+      "es2021": true,
+      "webextensions": true,
+      "jest": true
+    },
+    "extends": [
+      "eslint:recommended",
+      "prettier"
+    ],
+    "plugins": ["jest"],
+    "rules": {
+      "no-console": "warn",
+      "no-unused-vars": "error",
+      "no-undef": "error"
+    },
+    "globals": {
+      "chrome": "readonly"
+    }
+  },
+  "prettier": {
+    "semi": true,
+    "singleQuote": true,
+    "tabWidth": 2,
+    "trailingComma": "es5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jishnusygal/sparky-ai-browser.git"
+  },
+  "keywords": ["browser-extension", "ai", "automation", "chrome-extension"],
+  "author": "jishnusygal",
+  "license": "MIT"
+}

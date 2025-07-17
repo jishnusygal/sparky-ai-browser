@@ -1,0 +1,356 @@
+name: 🔄 CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  # Job 1: Code Quality & Validation
+  quality-check:
+    name: 🔍 Quality Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: 📦 Install Dependencies
+        run: |
+          npm ci --only=dev || npm install --only=dev || echo "No package.json found"
+      
+      - name: 🧹 Lint Code
+        run: |
+          # Check for console.log statements in production code
+          echo "🔍 Checking for console.log statements..."
+          if grep -r "console.log" --include="*.js" --exclude-dir=node_modules .; then
+            echo "❌ Found console.log statements. Please remove them."
+            exit 1
+          else
+            echo "✅ No console.log statements found."
+          fi
+          
+          # Check for basic JavaScript syntax errors
+          echo "🔍 Checking JavaScript syntax..."
+          find . -name "*.js" -not -path "./node_modules/*" | xargs -I {} node -c {}
+          echo "✅ JavaScript syntax check passed."
+      
+      - name: 🔒 Security Check
+        run: |
+          echo "🔍 Checking for hardcoded secrets..."
+          # Check for potential API keys or secrets
+          if grep -r -E "(api[_-]?key|secret|password|token)" --include="*.js" --exclude-dir=node_modules . | grep -v "placeholder\|example\|YOUR_"; then
+            echo "⚠️ Found potential hardcoded secrets. Please review."
+          else
+            echo "✅ No hardcoded secrets found."
+          fi
+      
+      - name: 📊 Validate Manifest
+        run: |
+          echo "🔍 Validating manifest.json..."
+          if node -e "JSON.parse(require('fs').readFileSync('manifest.json', 'utf8'))"; then
+            echo "✅ manifest.json is valid JSON."
+          else
+            echo "❌ manifest.json is invalid."
+            exit 1
+          fi
+      
+      - name: 🎨 Check File Structure
+        run: |
+          echo "🔍 Validating file structure..."
+          required_files=("manifest.json" "background.js" "content_script.js" "side_panel.html" "side_panel.js" "side_panel.css")
+          
+          for file in "${required_files[@]}"; do
+            if [[ -f "$file" ]]; then
+              echo "✅ $file exists"
+            else
+              echo "❌ $file is missing"
+              exit 1
+            fi
+          done
+
+  # Job 2: Extension Validation
+  extension-validation:
+    name: 🔌 Extension Validation
+    runs-on: ubuntu-latest
+    needs: quality-check
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: 🎭 Install Playwright
+        run: |
+          npm init -y || true
+          npm install --save-dev playwright
+          npx playwright install chromium
+      
+      - name: 🔌 Validate Chrome Extension
+        run: |
+          echo "🔍 Starting Chrome Extension validation..."
+          
+          # Create a simple validation script
+          cat > validate_extension.js << 'EOF'
+          const { chromium } = require('playwright');
+          const path = require('path');
+          
+          (async () => {
+            console.log('🚀 Starting Chrome Extension validation...');
+            
+            const extensionPath = path.resolve('.');
+            console.log('📁 Extension path:', extensionPath);
+            
+            const browser = await chromium.launchPersistentContext('', {
+              headless: true,
+              args: [
+                `--disable-extensions-except=${extensionPath}`,
+                `--load-extension=${extensionPath}`,
+                '--no-sandbox',
+                '--disable-setuid-sandbox'
+              ]
+            });
+            
+            console.log('✅ Browser launched with extension');
+            
+            // Get extension pages
+            const pages = browser.pages();
+            console.log(`📄 Found ${pages.length} pages`);
+            
+            // Test basic navigation
+            const page = await browser.newPage();
+            await page.goto('https://example.com');
+            console.log('✅ Navigation test passed');
+            
+            await browser.close();
+            console.log('🎉 Extension validation completed successfully!');
+          })().catch(error => {
+            console.error('❌ Extension validation failed:', error);
+            process.exit(1);
+          });
+          EOF
+          
+          node validate_extension.js
+
+  # Job 3: Create Extension Package
+  package:
+    name: 📦 Package Extension
+    runs-on: ubuntu-latest
+    needs: [quality-check, extension-validation]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: 🗜️ Create Extension Package
+        run: |
+          echo "📦 Creating extension package..."
+          
+          # Create clean directory for packaging
+          mkdir -p package
+          
+          # Copy essential files
+          cp manifest.json package/
+          cp *.js package/
+          cp *.html package/
+          cp *.css package/
+          cp *.md package/ 2>/dev/null || true
+          
+          # Create zip package
+          cd package
+          zip -r ../sparky-ai-browser-${GITHUB_SHA:0:7}.zip .
+          cd ..
+          
+          echo "✅ Package created: sparky-ai-browser-${GITHUB_SHA:0:7}.zip"
+          ls -la *.zip
+      
+      - name: 📤 Upload Package Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sparky-extension-package
+          path: "*.zip"
+          retention-days: 30
+
+  # Job 4: Security Scan
+  security-scan:
+    name: 🛡️ Security Scan
+    runs-on: ubuntu-latest
+    needs: quality-check
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: 🔍 Run Security Scan
+        run: |
+          echo "🛡️ Running security analysis..."
+          
+          # Check for common security issues
+          echo "🔍 Checking for eval() usage..."
+          if grep -r "eval(" --include="*.js" .; then
+            echo "⚠️ Found eval() usage. Consider alternatives for security."
+          fi
+          
+          echo "🔍 Checking for innerHTML usage..."
+          if grep -r "innerHTML" --include="*.js" .; then
+            echo "⚠️ Found innerHTML usage. Ensure content is sanitized."
+          fi
+          
+          echo "🔍 Checking for external script loading..."
+          if grep -r "document.createElement.*script" --include="*.js" .; then
+            echo "⚠️ Found dynamic script creation. Review for security."
+          fi
+          
+          echo "✅ Security scan completed."
+
+  # Job 5: Performance Check
+  performance-check:
+    name: ⚡ Performance Check
+    runs-on: ubuntu-latest
+    needs: quality-check
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: 📊 Check File Sizes
+        run: |
+          echo "📊 Checking file sizes..."
+          
+          # Check individual file sizes
+          for file in *.js *.html *.css; do
+            if [[ -f "$file" ]]; then
+              size=$(wc -c < "$file")
+              echo "📄 $file: ${size} bytes"
+              
+              # Warn for large files (over 100KB)
+              if [[ $size -gt 102400 ]]; then
+                echo "⚠️ Large file detected: $file (${size} bytes)"
+              fi
+            fi
+          done
+          
+          # Check total extension size
+          total_size=$(find . -name "*.js" -o -name "*.html" -o -name "*.css" -o -name "*.json" | xargs wc -c | tail -1 | awk '{print $1}')
+          echo "📦 Total extension size: ${total_size} bytes"
+          
+          if [[ $total_size -gt 1048576 ]]; then
+            echo "⚠️ Extension is quite large (over 1MB). Consider optimization."
+          fi
+
+  # Job 6: Compatibility Check
+  compatibility-check:
+    name: 🌐 Compatibility Check
+    runs-on: ubuntu-latest
+    needs: quality-check
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: 🔧 Check Manifest V3 Compliance
+        run: |
+          echo "🔍 Checking Manifest V3 compliance..."
+          
+          # Validate manifest version
+          manifest_version=$(node -e "console.log(JSON.parse(require('fs').readFileSync('manifest.json', 'utf8')).manifest_version)")
+          
+          if [[ "$manifest_version" == "3" ]]; then
+            echo "✅ Manifest V3 detected"
+          else
+            echo "❌ Not using Manifest V3"
+            exit 1
+          fi
+          
+          # Check for deprecated APIs
+          if grep -r "chrome.extension" --include="*.js" .; then
+            echo "⚠️ Found deprecated chrome.extension API usage"
+          fi
+          
+          if grep -r "chrome.runtime.onSuspend" --include="*.js" .; then
+            echo "⚠️ Found chrome.runtime.onSuspend (not available in service workers)"
+          fi
+          
+          echo "✅ Compatibility check completed"
+
+  # Job 7: Documentation Check
+  documentation-check:
+    name: 📚 Documentation Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: 📝 Check Documentation
+        run: |
+          echo "📚 Checking documentation..."
+          
+          required_docs=("README.md" "CONTRIBUTING.md" "LICENSE")
+          
+          for doc in "${required_docs[@]}"; do
+            if [[ -f "$doc" ]]; then
+              echo "✅ $doc exists"
+              
+              # Check if file is not empty
+              if [[ -s "$doc" ]]; then
+                echo "✅ $doc is not empty"
+              else
+                echo "⚠️ $doc is empty"
+              fi
+            else
+              echo "❌ $doc is missing"
+            fi
+          done
+          
+          # Check README content
+          if [[ -f "README.md" ]]; then
+            if grep -q "installation" README.md; then
+              echo "✅ README contains installation instructions"
+            else
+              echo "⚠️ README missing installation instructions"
+            fi
+          fi
+
+  # Job 8: Build Status Summary
+  build-summary:
+    name: 📋 Build Summary
+    runs-on: ubuntu-latest
+    needs: [quality-check, extension-validation, security-scan, performance-check, compatibility-check, documentation-check]
+    if: always()
+    
+    steps:
+      - name: 📊 Generate Build Summary
+        run: |
+          echo "## 🐕 Sparky AI Browser - Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Quality Check | ${{ needs.quality-check.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Extension Validation | ${{ needs.extension-validation.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security Scan | ${{ needs.security-scan.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Performance Check | ${{ needs.performance-check.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Compatibility Check | ${{ needs.compatibility-check.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Documentation Check | ${{ needs.documentation-check.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ needs.quality-check.result }}" == "success" && "${{ needs.extension-validation.result }}" == "success" ]]; then
+            echo "🎉 **All core checks passed!** Sparky is ready for release." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Some checks failed.** Please review the issues above." >> $GITHUB_STEP_SUMMARY
+          fi

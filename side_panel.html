@@ -16,20 +16,82 @@
             <p class="text-sm text-amber-600">Your AI Web Navigation Assistant</p>
         </div>
 
-        <!-- API Key Section -->
-        <div class="mb-6">
-            <label for="apiKey" class="block text-sm font-medium text-amber-700 mb-2">
-                🔑 Gemini API Key
-            </label>
-            <input 
-                type="password" 
-                id="apiKey" 
-                placeholder="Enter your Gemini API key..."
-                class="w-full px-3 py-2 border border-amber-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent text-sm"
-            >
-            <p class="text-xs text-amber-500 mt-1">
-                Get your key from <a href="https://makersuite.google.com/app/apikey" target="_blank" class="underline">Google AI Studio</a>
-            </p>
+        <!-- Authentication Section -->
+        <div id="authSection" class="mb-6">
+            <!-- Google Sign-In (Primary) -->
+            <div id="googleSignInSection">
+                <button 
+                    id="googleSignInBtn" 
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 mb-3 flex items-center justify-center space-x-2 shadow-md"
+                >
+                    <svg class="w-5 h-5" viewBox="0 0 24 24">
+                        <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    <span>Sign in with Google</span>
+                </button>
+                
+                <div class="text-center text-sm text-gray-500 mb-3">
+                    One-click setup - no API key needed!
+                </div>
+                
+                <div class="text-center">
+                    <button 
+                        id="showManualSetup" 
+                        class="text-sm text-amber-600 hover:text-amber-700 underline cursor-pointer"
+                    >
+                        Or enter API key manually
+                    </button>
+                </div>
+            </div>
+
+            <!-- User Profile (when signed in) -->
+            <div id="userProfileSection" class="hidden">
+                <div class="bg-white border border-green-200 rounded-lg p-4 mb-3">
+                    <div class="flex items-center space-x-3">
+                        <img id="userAvatar" src="" alt="User Avatar" class="w-10 h-10 rounded-full">
+                        <div class="flex-1">
+                            <div id="userName" class="font-medium text-gray-800"></div>
+                            <div id="userEmail" class="text-sm text-gray-500"></div>
+                        </div>
+                        <button 
+                            id="signOutBtn" 
+                            class="text-sm text-red-600 hover:text-red-700 underline"
+                        >
+                            Sign Out
+                        </button>
+                    </div>
+                </div>
+                <div class="text-center text-sm text-green-600 mb-3">
+                    ✅ Ready to go! API access configured automatically.
+                </div>
+            </div>
+
+            <!-- Manual API Key Entry (fallback) -->
+            <div id="manualApiKeySection" class="hidden">
+                <label for="apiKey" class="block text-sm font-medium text-amber-700 mb-2">
+                    🔑 Gemini API Key
+                </label>
+                <input 
+                    type="password" 
+                    id="apiKey" 
+                    placeholder="Enter your Gemini API key..."
+                    class="w-full px-3 py-2 border border-amber-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent text-sm mb-2"
+                >
+                <p class="text-xs text-amber-500 mb-3">
+                    Get your key from <a href="https://makersuite.google.com/app/apikey" target="_blank" class="underline">Google AI Studio</a>
+                </p>
+                <div class="text-center">
+                    <button 
+                        id="showGoogleSignIn" 
+                        class="text-sm text-blue-600 hover:text-blue-700 underline cursor-pointer"
+                    >
+                        ← Back to Google Sign-In
+                    </button>
+                </div>
+            </div>
         </div>
 
         <!-- Goal Input Section -->
@@ -48,10 +110,11 @@
         <!-- Action Button -->
         <button 
             id="startTaskBtn" 
-            class="w-full bg-amber-600 hover:bg-amber-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 mb-6 flex items-center justify-center space-x-2"
+            class="w-full bg-amber-600 hover:bg-amber-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 mb-6 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled
         >
             <span>🚀</span>
-            <span>Start Task</span>
+            <span id="startTaskBtnText">Sign in to start</span>
         </button>
 
         <!-- Status Section -->
@@ -61,7 +124,7 @@
                 id="statusArea" 
                 class="bg-white border border-amber-200 rounded-lg p-3 text-sm text-gray-700 min-h-[80px] max-h-[200px] overflow-y-auto"
             >
-                <div class="text-amber-500 italic">Ready to help! Enter your goal and API key to get started.</div>
+                <div class="text-amber-500 italic">Welcome to Sparky! Sign in with Google to get started instantly.</div>
             </div>
         </div>
 
@@ -82,6 +145,8 @@
         </div>
     </div>
 
+    <!-- Load authentication service first -->
+    <script src="google-auth.js"></script>
     <script src="side_panel.js"></script>
 </body>
 </html>

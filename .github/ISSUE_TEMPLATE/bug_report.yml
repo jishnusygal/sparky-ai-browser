@@ -1,0 +1,178 @@
+name: 🐛 Bug Report
+description: Report a bug to help us improve Sparky
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        # 🐕 Bug Report for Sparky AI Browser
+        
+        Thanks for taking the time to report this bug! This helps us make Sparky better for everyone.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: ✅ Pre-submission Checklist
+      description: Please check these before submitting
+      options:
+        - label: I have searched existing issues and this is not a duplicate
+          required: true
+        - label: I have read the CONTRIBUTING.md guidelines
+          required: true
+        - label: I have tested this with the latest version of Sparky
+          required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: 🌐 Environment
+      description: What browser are you using?
+      options:
+        - Chrome (Stable)
+        - Chrome (Beta)
+        - Chrome (Dev)
+        - Chrome (Canary)
+        - Microsoft Edge
+        - Brave Browser
+        - Other Chromium-based browser
+      default: 0
+    validations:
+      required: true
+
+  - type: input
+    id: extension-version
+    attributes:
+      label: 📦 Sparky Version
+      description: Which version of Sparky are you using?
+      placeholder: "e.g., v1.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: browser-version
+    attributes:
+      label: 🌐 Browser Version
+      description: What version of your browser?
+      placeholder: "e.g., Chrome 118.0.5993.117"
+
+  - type: input
+    id: os
+    attributes:
+      label: 💻 Operating System
+      description: What operating system are you using?
+      placeholder: "e.g., Windows 11, macOS 14.0, Ubuntu 22.04"
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 📝 Bug Description
+      description: A clear and concise description of what the bug is
+      placeholder: "Sparky fails to click the login button on example.com..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: ✅ Expected Behavior
+      description: What did you expect to happen?
+      placeholder: "Sparky should have clicked the login button and proceeded to enter credentials..."
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: ❌ Actual Behavior
+      description: What actually happened?
+      placeholder: "Sparky got stuck looking for the login button and eventually timed out..."
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 🔄 Steps to Reproduce
+      description: Please provide detailed steps to reproduce this issue
+      placeholder: |
+        1. Open Sparky on example.com
+        2. Set goal: "Log into my account"
+        3. Click Start Task
+        4. Observe Sparky's behavior
+      value: |
+        1. 
+        2. 
+        3. 
+        4. 
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: 🎯 Goal Given to Sparky
+      description: What goal did you give to Sparky?
+      placeholder: "Find the current weather in Tokyo, Japan"
+
+  - type: textarea
+    id: website
+    attributes:
+      label: 🌍 Website/URL
+      description: Which website were you trying to automate? (if relevant)
+      placeholder: "https://example.com"
+
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: 📊 How often does this happen?
+      description: How frequently do you encounter this bug?
+      options:
+        - Always (100% of the time)
+        - Often (75% of the time)
+        - Sometimes (50% of the time)
+        - Rarely (25% of the time)
+        - Once (this is the first time)
+      default: 4
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: 💥 Impact Level
+      description: How much does this bug affect your use of Sparky?
+      options:
+        - Critical (Sparky completely unusable)
+        - High (Major feature broken)
+        - Medium (Feature partially works)
+        - Low (Minor inconvenience)
+        - Very Low (Cosmetic issue)
+      default: 2
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 📋 Console Logs/Errors
+      description: Please check browser console (F12) and paste any relevant error messages
+      placeholder: |
+        Please open Developer Tools (F12), go to Console tab, and paste any red error messages here:
+        
+        Error: ...
+      render: text
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: 📸 Screenshots/Videos
+      description: If applicable, add screenshots or screen recordings to help explain the problem
+      placeholder: "Drag and drop images/videos here or paste links..."
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: 🔧 Workaround
+      description: Have you found any way to work around this issue?
+      placeholder: "I can manually complete the task by..."
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 📎 Additional Context
+      description: Any other context about the problem
+      placeholder: "This started happening after... / This only occurs when..."

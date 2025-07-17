@@ -1,0 +1,21 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Discussion Forum
+    url: https://github.com/jishnusygal/sparky-ai-browser/discussions
+    about: Have a question or want to discuss ideas? Start a discussion!
+  
+  - name: 📚 Documentation
+    url: https://github.com/jishnusygal/sparky-ai-browser/blob/main/README.md
+    about: Check our documentation for setup guides and FAQs
+  
+  - name: 🔐 OAuth Setup Guide
+    url: https://github.com/jishnusygal/sparky-ai-browser/blob/main/OAUTH_SETUP.md
+    about: Need help setting up Google OAuth? Follow our detailed guide
+  
+  - name: 🤝 Contributing Guide
+    url: https://github.com/jishnusygal/sparky-ai-browser/blob/main/CONTRIBUTING.md
+    about: Want to contribute? Check out our contribution guidelines
+  
+  - name: 🛡️ Private Security Report
+    url: mailto:security@sparky-ai.com
+    about: Found a critical security vulnerability? Report it privately via email

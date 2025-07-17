@@ -1,0 +1,120 @@
+version: 2
+updates:
+  # NPM dependencies (if package.json exists)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    reviewers:
+      - "jishnusygal"
+    assignees:
+      - "jishnusygal"
+    labels:
+      - "dependencies"
+      - "automated"
+    rebase-strategy: "auto"
+    
+    # Allow automatic updates for patch and minor versions
+    allow:
+      - dependency-type: "direct"
+        update-type: "version-update:semver-patch"
+      - dependency-type: "direct"
+        update-type: "version-update:semver-minor"
+      - dependency-type: "indirect"
+        update-type: "version-update:semver-patch"
+      - dependency-type: "indirect"
+        update-type: "version-update:semver-minor"
+    
+    # Ignore specific packages if needed
+    ignore:
+      # Ignore major version updates by default (require manual review)
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    
+    # Group related dependencies together
+    groups:
+      eslint:
+        patterns:
+          - "eslint*"
+        update-types:
+          - "minor"
+          - "patch"
+      
+      testing:
+        patterns:
+          - "jest*"
+          - "@testing-library/*"
+          - "cypress*"
+        update-types:
+          - "minor"
+          - "patch"
+      
+      build-tools:
+        patterns:
+          - "webpack*"
+          - "babel*"
+          - "rollup*"
+          - "vite*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # GitHub Actions dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "10:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(actions)"
+      include: "scope"
+    reviewers:
+      - "jishnusygal"
+    assignees:
+      - "jishnusygal"
+    labels:
+      - "github-actions"
+      - "dependencies"
+      - "automated"
+    rebase-strategy: "auto"
+    
+    # Group GitHub Actions updates
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Docker dependencies (if Dockerfile exists)
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: "chore(docker)"
+      include: "scope"
+    reviewers:
+      - "jishnusygal"
+    assignees:
+      - "jishnusygal"
+    labels:
+      - "docker"
+      - "dependencies"
+      - "automated"
+    rebase-strategy: "auto"

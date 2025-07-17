@@ -1,0 +1,433 @@
+name: 🚀 Release & Deploy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'README.md'
+      - 'CONTRIBUTING.md'
+      - '.github/**'
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      prerelease:
+        description: 'Is this a pre-release?'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  EXTENSION_NAME: sparky-ai-browser
+
+jobs:
+  # Job 1: Determine Version and Create Release
+  create-release:
+    name: 📋 Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      changelog: ${{ steps.changelog.outputs.changelog }}
+      release_url: ${{ steps.release.outputs.html_url }}
+      upload_url: ${{ steps.release.outputs.upload_url }}
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: 📊 Determine Version
+        id: version
+        run: |
+          # Get current version from manifest.json
+          current_version=$(node -e "console.log(JSON.parse(require('fs').readFileSync('manifest.json', 'utf8')).version)")
+          echo "Current version: $current_version"
+          
+          # Determine release type
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            release_type="${{ github.event.inputs.release_type }}"
+          else
+            # Auto-determine based on commit messages
+            commits=$(git log --pretty=format:"%s" HEAD~10..HEAD)
+            
+            if echo "$commits" | grep -qE "^feat(\(.+\))?!|^fix(\(.+\))?!|BREAKING CHANGE"; then
+              release_type="major"
+            elif echo "$commits" | grep -qE "^feat(\(.+\))?:"; then
+              release_type="minor"
+            else
+              release_type="patch"
+            fi
+          fi
+          
+          echo "Release type: $release_type"
+          
+          # Calculate new version
+          IFS='.' read -ra VERSION_PARTS <<< "$current_version"
+          major=${VERSION_PARTS[0]}
+          minor=${VERSION_PARTS[1]}
+          patch=${VERSION_PARTS[2]}
+          
+          case $release_type in
+            "major")
+              major=$((major + 1))
+              minor=0
+              patch=0
+              ;;
+            "minor")
+              minor=$((minor + 1))
+              patch=0
+              ;;
+            "patch")
+              patch=$((patch + 1))
+              ;;
+          esac
+          
+          new_version="$major.$minor.$patch"
+          
+          # Add pre-release suffix if specified
+          if [[ "${{ github.event.inputs.prerelease }}" == "true" ]]; then
+            new_version="$new_version-beta.$(date +%Y%m%d%H%M%S)"
+          fi
+          
+          echo "New version: $new_version"
+          echo "version=$new_version" >> $GITHUB_OUTPUT
+          echo "release_type=$release_type" >> $GITHUB_OUTPUT
+      
+      - name: 🔄 Update Version in Files
+        run: |
+          new_version="${{ steps.version.outputs.version }}"
+          
+          # Update manifest.json
+          node -e "
+            const manifest = JSON.parse(require('fs').readFileSync('manifest.json', 'utf8'));
+            manifest.version = '$new_version';
+            require('fs').writeFileSync('manifest.json', JSON.stringify(manifest, null, 2) + '\n');
+          "
+          
+          echo "✅ Updated manifest.json to version $new_version"
+      
+      - name: 📝 Generate Changelog
+        id: changelog
+        run: |
+          echo "📝 Generating changelog..."
+          
+          # Get the previous tag
+          previous_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          if [[ -z "$previous_tag" ]]; then
+            # First release
+            changelog_content="## 🎉 Initial Release
+
+This is the first release of Sparky AI Browser! 
+
+### ✨ Features
+- 🐕 **Agentic AI Browser**: Autonomous web navigation with AI
+- 🔐 **Google OAuth Integration**: One-click authentication
+- 🎨 **Modern UI**: Professional interface with real-time feedback
+- 🧠 **Brain & Hands Architecture**: Intelligent decision-making with precise execution
+- 🛡️ **Manifest V3**: Latest Chrome extension standards
+- 📱 **Side Panel Interface**: Native Chrome side panel integration
+
+### 🚀 Getting Started
+1. Install the extension
+2. Click \"Sign in with Google\"
+3. Enter your goal in natural language
+4. Watch Sparky navigate the web for you!
+
+### 🎯 What's Next
+Check out our [roadmap](https://github.com/jishnusygal/sparky-ai-browser/issues) for upcoming features."
+          else
+            echo "Previous tag: $previous_tag"
+            
+            # Generate changelog from commits
+            changelog_content="## 🔄 Changes Since $previous_tag
+
+"
+            
+            # Get commits since last tag
+            commits=$(git log --pretty=format:"%h|%s|%an" $previous_tag..HEAD --reverse)
+            
+            # Categorize commits
+            features=""
+            fixes=""
+            improvements=""
+            docs=""
+            other=""
+            
+            while IFS='|' read -r hash subject author; do
+              if [[ $subject =~ ^feat(\(.+\))?:(.+) ]]; then
+                features="$features- ✨ ${BASH_REMATCH[2]} ($hash)\n"
+              elif [[ $subject =~ ^fix(\(.+\))?:(.+) ]]; then
+                fixes="$fixes- 🐛 ${BASH_REMATCH[2]} ($hash)\n"
+              elif [[ $subject =~ ^(perf|refactor|style)(\(.+\))?:(.+) ]]; then
+                improvements="$improvements- ♻️ ${BASH_REMATCH[3]} ($hash)\n"
+              elif [[ $subject =~ ^docs(\(.+\))?:(.+) ]]; then
+                docs="$docs- 📚 ${BASH_REMATCH[2]} ($hash)\n"
+              else
+                other="$other- 🔧 $subject ($hash)\n"
+              fi
+            done <<< "$commits"
+            
+            # Build changelog
+            if [[ -n "$features" ]]; then
+              changelog_content="$changelog_content### ✨ New Features
+$features
+"
+            fi
+            
+            if [[ -n "$fixes" ]]; then
+              changelog_content="$changelog_content### 🐛 Bug Fixes
+$fixes
+"
+            fi
+            
+            if [[ -n "$improvements" ]]; then
+              changelog_content="$changelog_content### ♻️ Improvements
+$improvements
+"
+            fi
+            
+            if [[ -n "$docs" ]]; then
+              changelog_content="$changelog_content### 📚 Documentation
+$docs
+"
+            fi
+            
+            if [[ -n "$other" ]]; then
+              changelog_content="$changelog_content### 🔧 Other Changes
+$other
+"
+            fi
+          fi
+          
+          # Add version info
+          changelog_content="$changelog_content
+### 📦 Installation
+1. Download the extension package from this release
+2. Extract the zip file
+3. Load as unpacked extension in Chrome
+4. Follow the [setup guide](https://github.com/jishnusygal/sparky-ai-browser/blob/main/OAUTH_SETUP.md)
+
+### 🔗 Links
+- [Installation Guide](https://github.com/jishnusygal/sparky-ai-browser#installation)
+- [OAuth Setup](https://github.com/jishnusygal/sparky-ai-browser/blob/main/OAUTH_SETUP.md)
+- [Contributing](https://github.com/jishnusygal/sparky-ai-browser/blob/main/CONTRIBUTING.md)
+
+---
+**Full Changelog**: https://github.com/jishnusygal/sparky-ai-browser/compare/$previous_tag...v${{ steps.version.outputs.version }}"
+          
+          # Save changelog to output
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$changelog_content" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          # Also save to file for artifact
+          echo "$changelog_content" > CHANGELOG_RELEASE.md
+          
+          echo "✅ Changelog generated"
+      
+      - name: 🏷️ Create Git Tag
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Commit version changes
+          git add manifest.json
+          git commit -m "🔖 Bump version to $version" || echo "No changes to commit"
+          
+          # Create and push tag
+          git tag -a "v$version" -m "Release v$version"
+          git push origin "v$version"
+          git push origin main
+      
+      - name: 🎉 Create GitHub Release
+        id: release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          release_name: 🐕 Sparky AI Browser v${{ steps.version.outputs.version }}
+          body: ${{ steps.changelog.outputs.changelog }}
+          draft: false
+          prerelease: ${{ github.event.inputs.prerelease == 'true' }}
+
+  # Job 2: Build and Package Extension
+  build-and-package:
+    name: 📦 Build & Package
+    runs-on: ubuntu-latest
+    needs: create-release
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.create-release.outputs.version }}
+      
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: 🗜️ Create Extension Package
+        run: |
+          version="${{ needs.create-release.outputs.version }}"
+          
+          echo "📦 Creating extension package for version $version..."
+          
+          # Create build directory
+          mkdir -p build
+          
+          # Copy extension files
+          cp manifest.json build/
+          cp *.js build/
+          cp *.html build/
+          cp *.css build/
+          cp README.md build/
+          cp LICENSE build/
+          
+          # Create version info file
+          echo "Version: $version" > build/VERSION.txt
+          echo "Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> build/VERSION.txt
+          echo "Git Commit: ${{ github.sha }}" >> build/VERSION.txt
+          
+          # Create zip package
+          cd build
+          zip -r "../${EXTENSION_NAME}-v${version}.zip" .
+          cd ..
+          
+          # Create source package
+          zip -r "${EXTENSION_NAME}-source-v${version}.zip" . -x "build/*" "*.zip" ".git/*" ".github/*" "node_modules/*"
+          
+          echo "✅ Packages created:"
+          ls -la *.zip
+      
+      - name: 📤 Upload Extension Package
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./${{ env.EXTENSION_NAME }}-v${{ needs.create-release.outputs.version }}.zip
+          asset_name: ${{ env.EXTENSION_NAME }}-v${{ needs.create-release.outputs.version }}.zip
+          asset_content_type: application/zip
+      
+      - name: 📤 Upload Source Package
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./${{ env.EXTENSION_NAME }}-source-v${{ needs.create-release.outputs.version }}.zip
+          asset_name: ${{ env.EXTENSION_NAME }}-source-v${{ needs.create-release.outputs.version }}.zip
+          asset_content_type: application/zip
+
+  # Job 3: Update Documentation
+  update-docs:
+    name: 📚 Update Documentation
+    runs-on: ubuntu-latest
+    needs: [create-release, build-and-package]
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: 📝 Update CHANGELOG.md
+        run: |
+          version="${{ needs.create-release.outputs.version }}"
+          
+          # Create or update CHANGELOG.md
+          if [[ ! -f CHANGELOG.md ]]; then
+            echo "# 📋 Changelog
+
+All notable changes to Sparky AI Browser will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+" > CHANGELOG.md
+          fi
+          
+          # Add new release to changelog
+          temp_file=$(mktemp)
+          
+          echo "# 📋 Changelog
+
+All notable changes to Sparky AI Browser will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [v$version] - $(date +%Y-%m-%d)
+${{ needs.create-release.outputs.changelog }}
+" > "$temp_file"
+          
+          # Append existing changelog (skip header)
+          if [[ -f CHANGELOG.md ]]; then
+            tail -n +6 CHANGELOG.md >> "$temp_file"
+          fi
+          
+          mv "$temp_file" CHANGELOG.md
+          
+          echo "✅ Updated CHANGELOG.md"
+      
+      - name: 📝 Update README Badges
+        run: |
+          version="${{ needs.create-release.outputs.version }}"
+          
+          # Update version badge in README
+          if [[ -f README.md ]]; then
+            sed -i "s/version-[^-]*-/version-$version-/g" README.md || true
+            echo "✅ Updated README.md badges"
+          fi
+      
+      - name: 💾 Commit Documentation Updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add CHANGELOG.md README.md
+          git commit -m "📚 Update documentation for v${{ needs.create-release.outputs.version }}" || echo "No documentation changes"
+          git push origin main
+
+  # Job 4: Notify Success
+  notify-success:
+    name: 🎉 Release Complete
+    runs-on: ubuntu-latest
+    needs: [create-release, build-and-package, update-docs]
+    
+    steps:
+      - name: 🎊 Success Summary
+        run: |
+          echo "## 🎉 Release v${{ needs.create-release.outputs.version }} Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 What was released:" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: v${{ needs.create-release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Release URL**: ${{ needs.create-release.outputs.release_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Extension Package**: Available for download" >> $GITHUB_STEP_SUMMARY
+          echo "- **Source Package**: Available for download" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 Next Steps:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Test the new release" >> $GITHUB_STEP_SUMMARY
+          echo "2. Announce on social media" >> $GITHUB_STEP_SUMMARY
+          echo "3. Update Chrome Web Store (if applicable)" >> $GITHUB_STEP_SUMMARY
+          echo "4. Notify users of new features" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🐕 **Sparky is ready to help more users browse the web autonomously!**" >> $GITHUB_STEP_SUMMARY

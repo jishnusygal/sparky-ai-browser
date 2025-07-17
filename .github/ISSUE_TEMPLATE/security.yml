@@ -1,0 +1,266 @@
+name: 🛡️ Security Vulnerability
+description: Report a security vulnerability in Sparky AI Browser
+title: "[SECURITY] "
+labels: ["security", "vulnerability"]
+assignees:
+  - jishnusygal
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## ⚠️ Security Vulnerability Report
+        
+        **Important**: If this is a critical security vulnerability that could be exploited, please consider reporting it privately first by emailing the maintainer rather than creating a public issue.
+        
+        Thank you for helping keep Sparky AI Browser secure! 🛡️
+
+  - type: checkboxes
+    id: security-acknowledgment
+    attributes:
+      label: 🔐 Security Report Acknowledgment
+      description: Please confirm you understand the security reporting process
+      options:
+        - label: I understand this will create a public issue visible to everyone
+          required: true
+        - label: I have considered whether this should be reported privately first
+          required: true
+        - label: I have not publicly disclosed this vulnerability elsewhere
+          required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: 🚨 Severity Level
+      description: How severe is this security vulnerability?
+      options:
+        - "🔴 Critical - Remote code execution, full system compromise"
+        - "🟠 High - Privilege escalation, significant data exposure"
+        - "🟡 Medium - Information disclosure, limited access"
+        - "🟢 Low - Minor security improvement"
+        - "ℹ️ Informational - Security best practice suggestion"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: vulnerability-type
+    attributes:
+      label: 🔍 Vulnerability Type
+      description: What type of security issue is this?
+      options:
+        - "🔓 Authentication/Authorization bypass"
+        - "💉 Code injection (XSS, script injection, etc.)"
+        - "🔐 Cryptographic weakness"
+        - "📊 Information disclosure"
+        - "🌐 Cross-site request forgery (CSRF)"
+        - "📁 File inclusion/path traversal"
+        - "⬆️ Privilege escalation"
+        - "🔗 Insecure direct object reference"
+        - "📋 Input validation bypass"
+        - "🔧 Configuration security issue"
+        - "📦 Dependency vulnerability"
+        - "🎯 Social engineering vulnerability"
+        - "Other"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: attack-vector
+    attributes:
+      label: 🎯 Attack Vector
+      description: How can this vulnerability be exploited?
+      options:
+        - "🌐 Network - Remote exploitation over network"
+        - "🔗 Adjacent Network - Requires network access"
+        - "💻 Local - Requires local access to device"
+        - "👤 Physical - Requires physical access"
+        - "🤝 Social - Requires user interaction/social engineering"
+    validations:
+      required: true
+
+  - type: textarea
+    id: vulnerability-description
+    attributes:
+      label: 📋 Vulnerability Description
+      description: Describe the security vulnerability in detail
+      placeholder: "The vulnerability allows..."
+      value: |
+        **Summary:**
+        
+        
+        **Technical Details:**
+        
+        
+        **Root Cause:**
+        
+        
+        **Affected Components:**
+        
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: 🔄 Steps to Reproduce
+      description: Provide clear steps to reproduce this vulnerability
+      placeholder: "1. Navigate to..."
+      value: |
+        **Prerequisites:**
+        
+        
+        **Reproduction Steps:**
+        1. 
+        2. 
+        3. 
+        
+        **Expected vs Actual Behavior:**
+        
+    validations:
+      required: true
+
+  - type: textarea
+    id: poc-evidence
+    attributes:
+      label: 🧪 Proof of Concept
+      description: Provide evidence of the vulnerability (screenshots, code, etc.)
+      placeholder: "Attach screenshots, logs, or minimal PoC code"
+      value: |
+        **Evidence:**
+        
+        
+        **PoC Code (if applicable):**
+        ```
+        
+        ```
+        
+        **Screenshots/Logs:**
+        
+
+  - type: textarea
+    id: impact-assessment
+    attributes:
+      label: 💥 Impact Assessment
+      description: What are the potential impacts of this vulnerability?
+      value: |
+        **Confidentiality Impact:**
+        
+        
+        **Integrity Impact:**
+        
+        
+        **Availability Impact:**
+        
+        
+        **Potential Damage:**
+        
+    validations:
+      required: true
+
+  - type: textarea
+    id: affected-versions
+    attributes:
+      label: 📦 Affected Versions
+      description: Which versions of Sparky are affected?
+      placeholder: "All versions, version 1.0.0+, etc."
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment-details
+    attributes:
+      label: 🖥️ Environment Details
+      description: Provide details about the environment where you found this vulnerability
+      value: |
+        **Browser:**
+        
+        **Operating System:**
+        
+        **Sparky Version:**
+        
+        **Extension Environment:**
+        
+        **Additional Context:**
+        
+    validations:
+      required: true
+
+  - type: textarea
+    id: mitigation-suggestions
+    attributes:
+      label: 🛠️ Suggested Mitigation
+      description: Do you have any suggestions for fixing this vulnerability?
+      placeholder: "This could be mitigated by..."
+      value: |
+        **Immediate Mitigation:**
+        
+        
+        **Long-term Fix:**
+        
+        
+        **Prevention:**
+        
+
+  - type: checkboxes
+    id: exploit-status
+    attributes:
+      label: 🔍 Exploitation Status
+      description: Current status of this vulnerability
+      options:
+        - label: This is a theoretical vulnerability (no working exploit)
+        - label: I have a working proof of concept
+        - label: I have seen this exploited in the wild
+        - label: This vulnerability is already publicly known
+
+  - type: dropdown
+    id: disclosure-timeline
+    attributes:
+      label: ⏱️ Disclosure Timeline
+      description: What's your preferred disclosure timeline?
+      options:
+        - "🚀 Immediate - This should be fixed and disclosed ASAP"
+        - "📅 Standard - 90 days coordinated disclosure"
+        - "🤝 Coordinated - Work with maintainers on timeline"
+        - "📝 No preference - Up to maintainers"
+
+  - type: textarea
+    id: references
+    attributes:
+      label: 📚 References
+      description: Any relevant CVE numbers, security advisories, or research papers
+      placeholder: "CVE-XXXX-XXXX, links to similar vulnerabilities, etc."
+
+  - type: checkboxes
+    id: reporter-info
+    attributes:
+      label: 👤 Reporter Information
+      description: Information about you as the security researcher
+      options:
+        - label: I would like to be credited for this discovery
+        - label: I am reporting this as part of a bug bounty program
+        - label: I represent a security research organization
+        - label: I found this during a security audit/assessment
+        - label: I prefer to remain anonymous
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: 📋 Additional Context
+      description: Any other relevant information about this security vulnerability
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        
+        ## 🔒 Security Response Process
+        
+        1. **Acknowledgment**: We'll acknowledge receipt within 24-48 hours
+        2. **Assessment**: Our team will assess the severity and impact
+        3. **Investigation**: We'll investigate and work on a fix
+        4. **Communication**: We'll keep you updated on progress
+        5. **Fix & Testing**: Develop and test the security fix
+        6. **Release**: Deploy the fix in a new version
+        7. **Disclosure**: Coordinate public disclosure if appropriate
+        
+        **Thank you for responsible disclosure! 🛡️**

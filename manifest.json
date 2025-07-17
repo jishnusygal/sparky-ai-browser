@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Sparky - Agentic AI Browser",
+  "version": "1.0.0",
+  "description": "🐕 An intelligent browser agent that autonomously navigates the web to accomplish your goals",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "sidePanel"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "side_panel.html"
+  },
+  "content_scripts": [],
+  "action": {
+    "default_title": "Open Sparky AI Browser"
+  },
+  "icons": {
+    "16": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTggMkM2IDIgNCAzIDQgNXYyYzAgMiAyIDMgNCAzcy00LTEgNC0zVjVDMTIgMyAxMCAyIDggMloiIGZpbGw9IiM4QjQ1MTMiLz4KPGNpcmNsZSBjeD0iNiIgY3k9IjYiIHI9IjEiIGZpbGw9IiMwMDAiLz4KPGNpcmNsZSBjeD0iMTAiIGN5PSI2IiByPSIxIiBmaWxsPSIjMDAwIi8+CjxwYXRoIGQ9Ik04IDlDNyA5IDYgMTAgNiAxMXMxIDIgMiAyIDItMSAyLTJTOSA5IDggOVoiIGZpbGw9IiM4QjQ1MTMiLz4KPC9zdmc+",
+    "32": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTE2IDRDMTIgNCA4IDYgOCAxMHY0YzAgNCA0IDYgOCA2czgtMiA4LTZWMTBDMjQgNiAyMCA0IDE2IDRaIiBmaWxsPSIjOEI0NTEzIi8+CjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjIiIGZpbGw9IiMwMDAiLz4KPGNpcmNsZSBjeD0iMjAiIGN5PSIxMiIgcj0iMiIgZmlsbD0iIzAwMCIvPgo8cGF0aCBkPSJNMTYgMThDMTQgMTggMTIgMjAgMTIgMjJzMiA0IDQgNCA0LTIgNC00UzE4IDE4IDE2IDE4WiIgZmlsbD0iIzhCNDUxMyIvPgo8L3N2Zz4=",
+    "48": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTI0IDZDMTggNiAxMiA5IDEyIDE1djZjMCA2IDYgOSAxMiA5czEyLTMgMTItOVYxNUMzNiA5IDMwIDYgMjQgNloiIGZpbGw9IiM4QjQ1MTMiLz4KPGNpcmNsZSBjeD0iMTgiIGN5PSIxOCIgcj0iMyIgZmlsbD0iIzAwMCIvPgo8Y2lyY2xlIGN4PSIzMCIgY3k9IjE4IiByPSIzIiBmaWxsPSIjMDAwIi8+CjxwYXRoIGQ9Ik0yNCAyN0MyMSAyNyAxOCAzMCAxOCAzM3MzIDYgNiA2IDYtMyA2LTZTMjcgMjcgMjQgMjdaIiBmaWxsPSIjOEI0NTEzIi8+Cjwvc3ZnPg==",
+    "128": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgdmlld0JveD0iMCAwIDEyOCAxMjgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik02NCAxNkM0OCAxNiAzMiAyNCAzMiA0MFYxNkMwIDY0IDY0IDk2IDY0IDk2UzEyOCA2NCAxMjggNDBWMTZDOTYgMjQgODAgMTYgNjQgMTZaIiBmaWxsPSIjOEI0NTEzIi8+CjxjaXJjbGUgY3g9IjQ4IiBjeT0iNDgiIHI9IjgiIGZpbGw9IiMwMDAiLz4KPGNpcmNsZSBjeD0iODAiIGN5PSI0OCIgcj0iOCIgZmlsbD0iIzAwMCIvPgo8cGF0aCBkPSJNNjQgNzJDNTYgNzIgNDggODAgNDggODhzOCAxNiAxNiAxNiAxNi04IDE2LTE2UzcyIDcyIDY0IDcyWiIgZmlsbD0iIzhCNDUxMyIvPgo8L3N2Zz4="
+  }
+}

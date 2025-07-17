@@ -1,0 +1,102 @@
+/* Additional custom styles for Sparky AI Browser */
+
+/* Custom scrollbar styling */
+#statusArea::-webkit-scrollbar,
+#finalAnswerArea::-webkit-scrollbar {
+    width: 6px;
+}
+
+#statusArea::-webkit-scrollbar-track,
+#finalAnswerArea::-webkit-scrollbar-track {
+    background: #fef7ed;
+    border-radius: 3px;
+}
+
+#statusArea::-webkit-scrollbar-thumb,
+#finalAnswerArea::-webkit-scrollbar-thumb {
+    background: #d97706;
+    border-radius: 3px;
+}
+
+#statusArea::-webkit-scrollbar-thumb:hover,
+#finalAnswerArea::-webkit-scrollbar-thumb:hover {
+    background: #b45309;
+}
+
+/* Smooth animations */
+.status-update {
+    animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Button loading state */
+.loading {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.loading:hover {
+    background-color: #d97706 !important;
+}
+
+/* Pulse animation for status updates */
+.pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: .5;
+    }
+}
+
+/* Error state styling */
+.error-text {
+    color: #dc2626;
+    background-color: #fef2f2;
+    border-color: #fecaca;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid;
+}
+
+/* Success state styling */
+.success-text {
+    color: #059669;
+    background-color: #f0fdf4;
+    border-color: #bbf7d0;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid;
+}
+
+/* Thinking animation */
+.thinking {
+    position: relative;
+}
+
+.thinking::after {
+    content: '';
+    animation: ellipsis 1.5s infinite;
+}
+
+@keyframes ellipsis {
+    0% { content: ''; }
+    25% { content: '.'; }
+    50% { content: '..'; }
+    75% { content: '...'; }
+    100% { content: ''; }
+}

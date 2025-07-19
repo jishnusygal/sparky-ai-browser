@@ -1,6 +1,5 @@
 // Jest setup for Chrome Extension testing
-import 'jest-chrome';
-import '@testing-library/jest-dom';
+require('jest-chrome');
 
 // Mock Chrome APIs for testing
 global.chrome = {

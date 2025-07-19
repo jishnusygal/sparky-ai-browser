@@ -1,6 +1,5 @@
 // E2E tests for Sparky AI Browser Extension
-import { test, expect } from '@playwright/test';
-import path from 'path';
+const { test, expect } = require('@playwright/test');
 
 test.describe('Sparky AI Browser Extension E2E', () => {
   let extensionId;

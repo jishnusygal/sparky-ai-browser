@@ -10,8 +10,8 @@
     "test:unit": "jest --testPathPattern=tests/unit",
     "test:integration": "jest --testPathPattern=tests/integration",
     "test:extension": "playwright test tests/extension",
-    "lint": "eslint *.js",
-    "lint:fix": "eslint *.js --fix",
+    "lint": "eslint *.js tests/**/*.js",
+    "lint:fix": "eslint *.js tests/**/*.js --fix",
     "format": "prettier --write \"**/*.{js,html,css,json,md}\"",
     "format:check": "prettier --check \"**/*.{js,html,css,json,md}\"",
     "build": "npm run test && npm run lint && npm run format:check",
@@ -43,7 +43,9 @@
       "!node_modules/**",
       "!tests/**",
       "!dist/**",
-      "!coverage/**"
+      "!coverage/**",
+      "!playwright.config.js",
+      "!.eslintrc.js"
     ],
     "coverageReporters": ["text", "lcov", "html"],
     "coverageDirectory": "coverage",
@@ -54,27 +56,6 @@
         "lines": 70,
         "statements": 70
       }
-    }
-  },
-  "eslintConfig": {
-    "env": {
-      "browser": true,
-      "es2021": true,
-      "webextensions": true,
-      "jest": true
-    },
-    "extends": [
-      "eslint:recommended",
-      "prettier"
-    ],
-    "plugins": ["jest"],
-    "rules": {
-      "no-console": "warn",
-      "no-unused-vars": "error",
-      "no-undef": "error"
-    },
-    "globals": {
-      "chrome": "readonly"
     }
   },
   "prettier": {

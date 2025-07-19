@@ -64,7 +64,7 @@ class SidePanelUI {
         });
 
         // Listen for messages from background script
-        chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        chrome.runtime.onMessage.addListener((message) => {
             this.handleBackgroundMessage(message);
         });
     }
@@ -77,7 +77,7 @@ class SidePanelUI {
             if (isSignedIn) {
                 this.currentUser = this.googleAuth.getCurrentUser();
                 this.showUserProfile();
-                this.addStatusUpdate('✅ Welcome back! You\\'re signed in and ready to go.', 'success');
+                this.addStatusUpdate('✅ Welcome back! You\'re signed in and ready to go.', 'success');
             } else {
                 // Check for manual API key
                 await this.loadSavedApiKey();
@@ -104,7 +104,7 @@ class SidePanelUI {
             // Attempt to get/setup API key
             try {
                 await this.googleAuth.getGeminiApiKey();
-                this.addStatusUpdate('✅ API access configured! You\\'re ready to start using Sparky.', 'success');
+                this.addStatusUpdate('✅ API access configured! You\'re ready to start using Sparky.', 'success');
             } catch (apiError) {
                 this.addStatusUpdate('⚠️ API setup needed. Please follow the guidance to complete setup.', 'info');
             }
@@ -276,21 +276,25 @@ class SidePanelUI {
 
     handleBackgroundMessage(message) {
         switch (message.type) {
-            case 'AGENT_STATUS_UPDATE':
+            case 'AGENT_STATUS_UPDATE': {
                 this.addStatusUpdate(message.payload.status, message.payload.level || 'info');
                 break;
+            }
 
-            case 'AGENT_FINISHED':
+            case 'AGENT_FINISHED': {
                 this.handleTaskFinished(message.payload);
                 break;
+            }
 
-            case 'AGENT_ERROR':
+            case 'AGENT_ERROR': {
                 this.handleTaskError(message.payload.error);
                 break;
+            }
 
-            case 'AGENT_ACTION':
+            case 'AGENT_ACTION': {
                 this.addStatusUpdate(`🎯 ${message.payload.action}`, 'action');
                 break;
+            }
 
             default:
                 console.log('Unknown message type:', message.type);
@@ -398,7 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Handle side panel opening
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message) => {
     if (message.type === 'OPEN_SIDE_PANEL') {
         // Panel is already open, just focus on goal input
         document.getElementById('goalInput').focus();

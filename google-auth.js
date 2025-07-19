@@ -187,15 +187,15 @@ class GoogleAuthService {
             const setupUrl = `https://makersuite.google.com/app/apikey?authuser=${this.currentUser.email}`;
             
             // Open Google AI Studio in a new tab with user's account pre-selected
-            chrome.tabs.create({ url: setupUrl }, (tab) => {
+            chrome.tabs.create({ url: setupUrl }, () => {
                 // Listen for when user returns with API key
                 // This could be enhanced with a callback URL or messaging
                 
                 // For now, prompt user to enter the key
                 setTimeout(() => {
                     const apiKey = prompt(
-                        `Hi ${this.currentUser.given_name}!\n\n` +
-                        `Please copy your API key from the Google AI Studio tab and paste it here:\n\n` +
+                        `Hi ${this.currentUser.given_name}!\\n\\n` +
+                        `Please copy your API key from the Google AI Studio tab and paste it here:\\n\\n` +
                         `(The tab should have opened automatically with your Google account)`
                     );
                     
@@ -259,12 +259,7 @@ class GoogleAuthService {
     }
 }
 
-// Export for use in other modules
+// Export for browser environment only
 if (typeof window !== 'undefined') {
     window.GoogleAuthService = GoogleAuthService;
-}
-
-// For Node.js environments
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = GoogleAuthService;
 }
